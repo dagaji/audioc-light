@@ -31,7 +31,6 @@ gcc -Wall -Wextra -o audioc audiocArgs.c circularBuffer.c configureSndcard.c eas
 void update_buffer(int descriptor, void *buffer, int size);
 void play(int descriptor, void *buffer, int size, unsigned int * current_blocks);
 int ms2bytes(int duration, int rate, int channelNumber, int sndCardFormat);
-int detect_silence(void* buf, int fragmentSize, int sndCardFormat);
 void insert_repeated_packets(void* circular_buf, void* buf, int requestedFragmentSize, unsigned int K, unsigned int numberOfBlocks, unsigned int * current_blocks, int verbose_c);
 void create_comfort_noise(void* noise_pointer, int fragmentSize, int sndCardFormat);
 int check_write_cbuf(void* circular_buf, void* content_pointer, int size, unsigned int * current_blocks, int verbose_c);
@@ -109,10 +108,9 @@ void main(int argc, char *argv[])
     int buffering = 1;
     unsigned int nseq = 0;
     unsigned long int timeStamp = 0;
-    unsigned long int timeStamp_anterior = 0;
-    unsigned long int timeStamp_actual = 0;
     unsigned int seqNum_anterior = 0;
     unsigned int seqNum_actual = 0;
+		unsigned int seqNum_timer = 0;
     rtp_hdr_t * hdr_message = NULL;
     char * audioData = NULL;
     unsigned int K = 0;
@@ -202,13 +200,6 @@ void main(int argc, char *argv[])
         exit (1); /* very unusual case */
     }
 
-    if (gettimeofday (&last_timeval, NULL) <0) {
-        printf("Timeval fallo\n");
-        exit(1);
-    }
-
-	
-
 
     while(buffering){
 
@@ -260,7 +251,6 @@ void main(int argc, char *argv[])
                 update_buffer(sockId, buf_rcv, requestedFragmentSize + sizeof(rtp_hdr_t));
 
                 hdr_message = (rtp_hdr_t *) buf_rcv;
-                timeStamp_actual = ntohl((*hdr_message).ts);
                 seqNum_actual = ntohs((*hdr_message).seq);
                 validate_packet((*hdr_message).ssrc, (*hdr_message).pt);
 
@@ -269,8 +259,6 @@ void main(int argc, char *argv[])
 
                 if(current_blocks == 0){
                     seqNum_anterior = seqNum_actual;
-                    timeStamp_anterior = timeStamp_actual;
-					first_timeStamp = timeStamp_actual;
                     check_write_cbuf(circular_buf, audioData, requestedFragmentSize, &current_blocks, INSERT);
 					if (gettimeofday (&first_packet_timeval, NULL) <0) {
         				printf("Timeval fallo\n");
@@ -295,7 +283,6 @@ void main(int argc, char *argv[])
                     }
 
                     seqNum_anterior = seqNum_actual;
-                    timeStamp_anterior = timeStamp_actual;
                     memcpy(last_audioData, audioData, requestedFragmentSize);
                     buffering = (current_blocks < numberOfBlocks);
                 }
@@ -308,7 +295,6 @@ void main(int argc, char *argv[])
 
     }
 
-    timeStamp_timer = timeStamp_anterior;
     silence_timer.tv_sec = 1;
     silence_timer.tv_usec = 0;
 
@@ -331,8 +317,7 @@ void main(int argc, char *argv[])
 
         }else if(res == 0){
             if(check_write_cbuf(circular_buf, noise_pointer, requestedFragmentSize, &current_blocks, TIMER)){
-                timeStamp_timer = timeStamp_timer + requestedFragmentSize;
-				num_times_timer++;
+				seqNum_timer++;
             }
         }else{
 
@@ -364,29 +349,13 @@ void main(int argc, char *argv[])
 
                 update_buffer(descriptorSnd, audioData, requestedFragmentSize);
 
-                if(detect_silence(audioData, requestedFragmentSize, sndCardFormat)){
-					if(verbose) {
-                        printf ("_");fflush (stdout);
-                    }
-                    if(get_diff_times(&last_timeval) < 10){
-                        if(sndCardFormat == S16_LE) hton_audio(audioData, requestedFragmentSize);
-				        easy_send(buf_send, requestedFragmentSize + sizeof(rtp_hdr_t));
-                        nseq = nseq + 1;
-                        if(verbose){
-							printf (".");fflush (stdout);
-						}						
-                    }else{
-                        local_silences++;
-					}
-
-                }else{
                     if(sndCardFormat == S16_LE) hton_audio(audioData, requestedFragmentSize);
                     easy_send(buf_send, requestedFragmentSize + sizeof(rtp_hdr_t));
                     nseq = nseq + 1;
                     if(verbose){
 						printf (".");fflush (stdout);
 					}
-                }
+
 
 				timeStamp = timeStamp + requestedFragmentSize;
 
@@ -397,42 +366,29 @@ void main(int argc, char *argv[])
                 update_buffer(sockId, buf_rcv, requestedFragmentSize + sizeof(rtp_hdr_t));
 
                 hdr_message = (rtp_hdr_t *) buf_rcv;
-                timeStamp_actual = ntohl((*hdr_message).ts);
 		        seqNum_actual = ntohs((*hdr_message).seq);
                 validate_packet((*hdr_message).ssrc, (*hdr_message).pt);
 
                 audioData = (char *)(hdr_message + 1);
                 if(sndCardFormat == S16_LE) ntoh_audio(audioData, requestedFragmentSize);
 
-                if(seqNum_actual > seqNum_anterior){
+                if(seqNum_actual > seqNum_anterior && seqNum_actual > seqNum_timer){
 
-                    if(timeStamp_timer < timeStamp_actual){
+                    K = seqNum_actual - seqNum_anterior;
 
-                        K = seqNum_actual - seqNum_anterior;
-                        K_t = (unsigned int)(timeStamp_actual - timeStamp_anterior) / requestedFragmentSize;
-
-                        if(K_t > 1) num_blocks_to_write = (timeStamp_actual - timeStamp_timer) / (requestedFragmentSize) - 1;
-
+                    if(K > 1) num_blocks_to_write = seqNum_actual - seqNum_timer;
 
                         if(K == 1){
 
-                            if(K_t == 1){
-                                check_write_cbuf(circular_buf, audioData, requestedFragmentSize, &current_blocks, INSERT);
-                            }else if(K_t > 1){
-								remote_silences = remote_silences + (num_blocks_to_write + num_times_timer);
-                                insert_repeated_packets(circular_buf, noise_pointer, requestedFragmentSize, num_blocks_to_write, numberOfBlocks, &current_blocks, SILENCE);
-                                check_write_cbuf(circular_buf, audioData, requestedFragmentSize, &current_blocks, INSERT);
-                            }
+                            check_write_cbuf(circular_buf, audioData, requestedFragmentSize, &current_blocks, INSERT);
 
-                        }else if(K > 1){
+                        }else{
 
                             if(verbose){
                                 printf ("s");fflush (stdout);
                             }
 
-                            if (K_t == K){
-
-                                if(K_t < 4 && (timeStamp_anterior == timeStamp_timer)){
+                            if(K < 4 ){
                                     insert_repeated_packets(circular_buf, last_audioData, requestedFragmentSize, num_blocks_to_write, numberOfBlocks, &current_blocks, X);
                                     check_write_cbuf(circular_buf, audioData, requestedFragmentSize, &current_blocks, INSERT);
                                 }else {
@@ -440,15 +396,8 @@ void main(int argc, char *argv[])
                                     check_write_cbuf(circular_buf, audioData, requestedFragmentSize, &current_blocks, INSERT);
                                 }
 
-                            }else if(K_t > K){
-                                insert_repeated_packets(circular_buf, noise_pointer, requestedFragmentSize, num_blocks_to_write, numberOfBlocks, &current_blocks, X);
-                                check_write_cbuf(circular_buf, audioData, requestedFragmentSize, &current_blocks, INSERT);
-                            }
-
                         }
 
-                        timeStamp_timer = timeStamp_actual;
-						num_times_timer = 0;
                         memcpy(last_audioData, audioData, requestedFragmentSize);
 
                     }else{
@@ -457,12 +406,11 @@ void main(int argc, char *argv[])
                         }
                 	}
 
-                    timeStamp_anterior = timeStamp_actual;
+                    seqNum_timer = seqNum_actual;
                     seqNum_anterior = seqNum_actual;
 
                 }
 
-            }
 
         }
 
@@ -569,44 +517,6 @@ void create_comfort_noise(void* noise_pointer, int fragmentSize, int sndCardForm
 
 
 }
-
-
-int detect_silence(void *buf, int fragmentSize, int sndCardFormat){
-
-    int i;
-    uint8_t* u8_pointer = (uint8_t*)buf;
-    int16_t* s16_pointer = (int16_t*)buf;
-    int silence_samples = 0;
-    float percentage_silence;
-	int is_silence;
-    int num_samples;
-
-    if(sndCardFormat == U8){
-
-        num_samples = fragmentSize / sizeof(uint8_t);
-        for(i=0; i<num_samples; i= i + 1){
-            if((u8_pointer[i] > (ZERO_U8 - MA_U8)) && (u8_pointer[i] < (ZERO_U8 + MA_U8))){
-                silence_samples = silence_samples + 1;
-            }
-        }
-
-    }else if(sndCardFormat == S16_LE){
-
-        num_samples = fragmentSize / sizeof(int16_t);
-        for(i=0; i<num_samples; i= i + 1){
-            if((s16_pointer[i] > (ZERO_S16 - MA_S16)) && (s16_pointer[i] < (ZERO_S16 + MA_S16))){
-                silence_samples = silence_samples + 1;
-            }
-        }
-    }
-
-    percentage_silence = (float)silence_samples / (float)num_samples;
-	is_silence = (percentage_silence > PMA);
-
-    return is_silence;
-
-}
-
 
 int check_write_cbuf(void* circular_buf, void* content_pointer, int size, unsigned int * current_blocks, int verbose_c){
 
@@ -723,7 +633,7 @@ void terminar(){
 }
 
 void validate_packet(unsigned long int remote_ssrc, unsigned int remote_pt){
-	
+
     if(ntohl(remote_ssrc) == ssrc){
 		printf("Fallo igual SSRC\n");
         exit(0);
