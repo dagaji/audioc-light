@@ -295,6 +295,8 @@ void main(int argc, char *argv[])
 
     }
 
+
+		// Cambiar luego
     silence_timer.tv_sec = 1;
     silence_timer.tv_usec = 0;
 

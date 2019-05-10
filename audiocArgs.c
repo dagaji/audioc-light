@@ -10,7 +10,7 @@
 
 
 /*=====================================================================*/
-void args_print_audioc (int multicastIp, unsigned int ssrc, int port, int packetDuration, int payload, int accumulatedTime, int vol, int verbose)
+void args_print_audioc (struct in_addr multicastIp, unsigned int ssrc, int port, int packetDuration, int payload, int accumulatedTime, int vol, int verbose)
 {
     char multicastIpStr[16];
     if (inet_ntop(AF_INET, &multicastIp, multicastIpStr, 16) == NULL) {
@@ -30,7 +30,7 @@ void args_print_audioc (int multicastIp, unsigned int ssrc, int port, int packet
 static void _printHelp (void)
 {
     printf ("\naudioc v1.0");
-    printf ("\naudioc  MULTICAST_ADDR  LOCAL_SSRC  [-pLOCAL_RTP_PORT] [-lPACKET_DURATION] [-yPAYLOAD] [-kACCUMULATED_TIME] [-vVOL] [-c]\n");
+    printf ("\naudioc  MULTICAST_ADDR  LOCAL_SSRC  [-pLOCAL_RTP_PORT] [-lPACKET_DURATION] [-yPAYLOAD] [-kACCUMULATED_TIME] [-vVOL] [-c]\n\n");
 }
 
 
@@ -48,11 +48,10 @@ static void _defaultValues (int *port, int *vol, int *packetDuration, int *verbo
 
 
 /*=====================================================================*/
-int args_capture_audioc(int argc, char * argv[], int *multicastIp, unsigned int *ssrc, int *port, int *vol, int *packetDuration, int *verbose, int *payload, int *bufferingTime)
+int args_capture_audioc(int argc, char * argv[], struct in_addr *multicastIp, unsigned int *ssrc, int *port, int *vol, int *packetDuration, int *verbose, int *payload, int *bufferingTime)
 {
     int index;
     char car;
-    //const int  numOfNamesFichMax = 1;
     int numOfNames=0;
 
     /*set default values */
@@ -164,7 +163,7 @@ int args_capture_audioc(int argc, char * argv[], int *multicastIp, unsigned int 
                     printf("\nInternet address string not recognized\n");
                     return(EXIT_FAILURE);
                 }
-                if (!IN_CLASSD(ntohl(*multicastIp))) {
+                if (!IN_CLASSD(ntohl(multicastIp ->s_addr))) {
                     printf("\nNot a multicast address\n");
                     return(EXIT_FAILURE);
                 }
@@ -199,12 +198,19 @@ int args_capture_audioc(int argc, char * argv[], int *multicastIp, unsigned int 
 /* Fast test of args, uncoment the following, compile with
  * gcc -o testArgs audioArgs.c 
  * Test different entries and check the results */
-/* 
-int main(int argc, char *argv[])
-{
-    int  multicastIp, ssrc, port, vol, packetDuration, verbose, payload, bufferingTime;
 
-    args_capture_audioc (argc, argv, &multicastIp, &ssrc, &port, &vol, &packetDuration,  &verbose,  &payload, &bufferingTime );
-    args_print_audioc(multicastIp, ssrc, port, packetDuration, payload, bufferingTime, vol, verbose);
-}
-*/
+// int main(int argc, char *argv[])
+// {
+//     struct in_addr  multicastIp;
+//     unsigned int ssrc;
+//     int port, vol, packetDuration, verbose, payload, bufferingTime;
+
+//     if (EXIT_SUCCESS == args_capture_audioc (argc, argv, &multicastIp, &ssrc, &port, &vol, &packetDuration,  &verbose,  &payload, &bufferingTime )) {
+//         /* print arguments only if success */
+//         args_print_audioc(multicastIp, ssrc, port, packetDuration, payload, bufferingTime, vol, verbose);
+//     }
+    
+
+//     return (EXIT_SUCCESS);
+// }
+
