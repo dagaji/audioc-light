@@ -277,7 +277,7 @@ while(1){
 
           verbose_print(verbose, "s");
           
-          void * aux_buf = (diff_nseq< 4) ?  ptr_ultimo_audio : ptr_silencio;
+          void * aux_buf = (diff_nseq < 4) ?  ptr_ultimo_audio : ptr_silencio;
           int num_repetidos = nseq_rcv_actual - nseq_timer - 1;
           {
             int i;
@@ -390,7 +390,7 @@ int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr
   }
   
   /* binding socket - using mcast localSAddr address */
-  if (bind(descriptor_socket, (struct sockaddr *)&remToSendSAddr, sizeof(struct sockaddr_in)) < 0) {
+  if (bind(descriptor_socket, (struct sockaddr *)remToSendSAddr, sizeof(struct sockaddr_in)) < 0) {
     printf("bind error\n");
     return -1;
   }
