@@ -427,6 +427,7 @@ int escribir_en_socket(int descriptor_socket, struct sockaddr_in * remToSendSAdd
   /* Using sendto to send information. Since I've bind the socket, the local (source) port of the packet is fixed. In the rem structure I set the remote (destination) address and port */
   int result;
   if ( (result = sendto(descriptor_socket, message, size, /* flags */ 0, (struct sockaddr *) remToSendSAddr, sizeof(*remToSendSAddr)))<0) {
+    printf("%d\n", sizeof(*remToSendSAddr));
     printf("sendto error\n");
   }
   
