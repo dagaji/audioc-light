@@ -1,10 +1,3 @@
-/*
- 
- gcc -Wall -Wextra -o audioc audiocArgs.c circularBuffer.c configureSndcard.c easyUDPSockets.c audioc.c
- 
- ./audioc 227.3.4.5 4532 -l100 -c
- */
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <signal.h>
@@ -155,8 +148,6 @@ if((descriptor_socket = crear_socket(multicastIp, &remToSendSAddr, (unsigned sho
   exit(1);
 }
 
-printf(">>>>>>>>>>>>>>>>>>%d\n", sizeof(remToSendSAddr));
-
 circular_buf = cbuf_create_buffer(num_bloques_cbuf, num_bytes_fragmento);
 
 ptr_silencio = malloc (num_bytes_fragmento);
@@ -238,7 +229,7 @@ while(1){
       }
       
       
-      escribir_en_socket(descriptor_socket, ptr_enviar, &remToSendSAddr, num_bytes_fragmento + sizeof(rtp_hdr_t));
+      escribir_en_socket(descriptor_socket, &remToSendSAddr, ptr_enviar, num_bytes_fragmento + sizeof(rtp_hdr_t));
 
       nseq++;
       timeStamp += num_muestras_fragmento;
@@ -418,8 +409,6 @@ int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr
   unsigned char loop=0;
   
   setsockopt(descriptor_socket, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(unsigned char));
-
-  printf(">>>>>>>>>>>>>>>>>>%d\n", sizeof(*remToSendSAddr));
   
   return descriptor_socket;
   
@@ -430,8 +419,8 @@ int escribir_en_socket(int descriptor_socket, struct sockaddr_in * remToSendSAdd
    In the remoteSAddr structure I have the address and port of the remote host, as returned by recvfrom */
   /* Using sendto to send information. Since I've bind the socket, the local (source) port of the packet is fixed. In the rem structure I set the remote (destination) address and port */
   int result;
-  if ( (result = sendto(descriptor_socket, message, size, /* flags */ 0, (struct sockaddr *) remToSendSAddr, sizeof(struct sockaddr)))<0) {
-    printf("%d\n", sizeof(struct sockaddr));
+  if ( (result = sendto(descriptor_socket, message, size, /* flags */ 0, (struct sockaddr *) remToSendSAddr, sizeof(*remToSendSAddr)))<0) {
+    printf("%d\n",sizeof(*remToSendSAddr));
     printf("sendto error\n");
   }
   
