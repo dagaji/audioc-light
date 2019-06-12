@@ -261,8 +261,15 @@ while(1){
         *(ptr_audio + i) = ntohs(*(ptr_audio + i));
         }
       }
-      
-      if(nseq_rcv_actual > nseq_rcv_anterior && nseq_rcv_actual > nseq_timer){
+
+      if(buffering){
+
+        escribir_en_cbuf(circular_buf, ptr_audio, num_bytes_fragmento);
+        bloques_en_cbuf++;
+        verbose_print(verbose, "+");
+        memcpy(ptr_ultimo_audio, ptr_audio, num_bytes_fragmento);
+
+      }else if(nseq_rcv_actual > nseq_rcv_anterior && nseq_rcv_actual > nseq_timer){
         
         diff_nseq = nseq_rcv_actual - nseq_rcv_anterior;
         
@@ -285,7 +292,6 @@ while(1){
         escribir_en_cbuf(circular_buf, ptr_audio, num_bytes_fragmento);
         bloques_en_cbuf++;
         verbose_print(verbose, "+");
-
         memcpy(ptr_ultimo_audio, ptr_audio, num_bytes_fragmento);
         
       }else{
