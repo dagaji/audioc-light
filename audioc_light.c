@@ -457,5 +457,5 @@ void liberar_recursos(){
 }
 
 void verbose_print(int verbose, char *codigo){
-  if (verbose) printf("%s\n", codigo); fflush (stdout);
+  if (verbose) printf("%s", codigo);fflush (stdout);
 }
