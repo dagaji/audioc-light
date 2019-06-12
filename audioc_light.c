@@ -29,7 +29,7 @@
 
 int escribir_en_cbuf(void* circular_buf, void* src_ptr, int size);
 void liberar_recursos();
-int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr, unsigned short int destination_puerto);
+int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr, unsigned short int destination_port);
 int escribir_en_socket(int descriptor_socket, struct sockaddr_in * remToSendSAddr ,void * message, int size);
 int leer_de_socket(int descriptor_socket, char * buff, int size);
 void verbose_print(int verbose, char *codigo);
@@ -63,7 +63,7 @@ void main(int argc, char *argv[])
 struct sigaction sigInfo; /* signal conf */
 int descriptor_snd;
 int num_bytes_fragmento;
-int puerto;
+int port;
 int vol;
 int duracion_fragmento;
 int payload;
@@ -101,7 +101,7 @@ if ((sigaction (SIGINT, &sigInfo, NULL)) < 0) {
 
 /* obtain values from the command line - or default values otherwise */
 if (-1 == args_capture_audioc(argc, argv, &multicastIp, &ssrc,
-                              &puerto, &vol, &duracion_fragmento, &verbose, &payload, &duracion_buffering))
+                              &port, &vol, &duracion_fragmento, &verbose, &payload, &duracion_buffering))
 { exit(1);  /* there was an error parsing the arguments, the error type
  is printed by the args_capture function */
 };
@@ -129,7 +129,7 @@ printf("num_bloques_cbuf: %d\n", num_bloques_cbuf);
 
 vol = configVol (channelNumber, descriptor_snd, vol);
 
-args_print_audioc(multicastIp, ssrc, puerto, duracion_fragmento, payload, duracion_buffering, vol, verbose);
+args_print_audioc(multicastIp, ssrc, port, duracion_fragmento, payload, duracion_buffering, vol, verbose);
 printFragmentSize (descriptor_snd);
 printf ("Duration of each packet exchanged with the soundcard :%f\n", (float) num_bytes_fragmento / (float) (channelNumber * sndCardFormat / BITS_POR_BYTE) / (float) rate);
 
@@ -150,7 +150,7 @@ if (ptr_enviar == NULL) {
   exit (1); /* very unusual case */
 }
 struct sockaddr_in remToSendSAddr;
-if((descriptor_socket = crear_socket(multicastIp, &remToSendSAddr, (unsigned short int)puerto)) < 0){
+if((descriptor_socket = crear_socket(multicastIp, &remToSendSAddr, (unsigned short int)port)) < 0){
   printf("Could not initialize socket.\n");
   exit(1);
 }
@@ -353,11 +353,11 @@ int escribir_en_cbuf(void* circular_buf, void* src_ptr, int size){
   
 }
 
-int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr, unsigned short int destination_puerto){
+int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr, unsigned short int destination_port){
   /* preparing bind */
   // bzero(&localSAddr, sizeof(localSAddr));
   // localSAddr.sin_family = AF_INET;
-  // localSAddr.sin_puerto = htons(puerto); /* besides filtering, this assures that info is being sent with this puerto as local puerto */
+  // localSAddr.sin_port = htons(port); /* besides filtering, this assures that info is being sent with this port as local port */
   // multicastAddr.sin_addr = multicastIp;
   // /* fill .sin_addr with multicast address */
   // if (inet_pton(AF_INET, GROUP, &localSAddr.sin_addr) < 0) {
@@ -367,7 +367,7 @@ int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr
   
   bzero(remToSendSAddr, sizeof(struct sockaddr_in));
   (*remToSendSAddr).sin_family = AF_INET;
-  (*remToSendSAddr).sin_puerto = htons(destination_puerto);
+  (*remToSendSAddr).sin_port = htons(destination_port);
   (*remToSendSAddr).sin_addr = multicastIp;
   
   // if (inet_pton(AF_INET, GROUP, &remToSendSAddr.sin_addr) < 0) {
@@ -382,7 +382,7 @@ int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr
     return -1;
   }
   
-  /* configure SO_REUSEADDR, multiple instances can bind to the same multicast address/puerto */
+  /* configure SO_REUSEADDR, multiple instances can bind to the same multicast address/port */
   int enable = 1;
   if (setsockopt(descriptor_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
     printf("setsockopt(SO_REUSEADDR) failed");
@@ -410,7 +410,7 @@ int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr
     return -1;
   }
   
-  /* building structure to identify address/puerto of the remote node in order to send data to it */
+  /* building structure to identify address/port of the remote node in order to send data to it */
   
   
   unsigned char loop=0;
@@ -422,9 +422,9 @@ int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr
 }
 int escribir_en_socket(int descriptor_socket, struct sockaddr_in * remToSendSAddr ,void * message, int size){
   
-  /* Using sendto to send information. Since I've made a bind to the socket, the localSAddr (source) puerto of the packet is fixed.
-   In the remoteSAddr structure I have the address and puerto of the remote host, as returned by recvfrom */
-  /* Using sendto to send information. Since I've bind the socket, the local (source) puerto of the packet is fixed. In the rem structure I set the remote (destination) address and puerto */
+  /* Using sendto to send information. Since I've made a bind to the socket, the localSAddr (source) port of the packet is fixed.
+   In the remoteSAddr structure I have the address and port of the remote host, as returned by recvfrom */
+  /* Using sendto to send information. Since I've bind the socket, the local (source) port of the packet is fixed. In the rem structure I set the remote (destination) address and port */
   int result;
   if ( (result = sendto(descriptor_socket, message, size, /* flags */ 0, (struct sockaddr *) remToSendSAddr, sizeof(*remToSendSAddr)))<0) {
     printf("sendto error\n");
@@ -455,7 +455,6 @@ void liberar_recursos(){
   
   if (ptr_recibir) free(ptr_recibir);
   if (ptr_enviar) free(ptr_enviar);
-  if (fileName) free(fileName);
   if (circular_buf) cbuf_destroy_buffer (circular_buf);
   if (ptr_silencio) free(ptr_silencio);
   if (ptr_ultimo_audio) free(ptr_ultimo_audio);
