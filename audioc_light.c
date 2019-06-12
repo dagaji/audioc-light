@@ -155,6 +155,8 @@ if((descriptor_socket = crear_socket(multicastIp, &remToSendSAddr, (unsigned sho
   exit(1);
 }
 
+printf(">>>>>>>>>>>>>>>>>>%d\n", sizeof(*remToSendSAddr));
+
 circular_buf = cbuf_create_buffer(num_bloques_cbuf, num_bytes_fragmento);
 
 ptr_silencio = malloc (num_bytes_fragmento);
