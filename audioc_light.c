@@ -430,7 +430,7 @@ int escribir_en_socket(int descriptor_socket, struct sockaddr_in * remToSendSAdd
    In the remoteSAddr structure I have the address and port of the remote host, as returned by recvfrom */
   /* Using sendto to send information. Since I've bind the socket, the local (source) port of the packet is fixed. In the rem structure I set the remote (destination) address and port */
   int result;
-  if ( (result = sendto(descriptor_socket, message, size, /* flags */ 0, (struct sockaddr *) remToSendSAddr, sizeof(*remToSendSAddr)))<0) {
+  if ( (result = sendto(descriptor_socket, message, size, /* flags */ 0, (struct sockaddr *) remToSendSAddr, sizeof(struct sockaddr_in)))<0) {
     printf("%d\n", sizeof(*remToSendSAddr));
     printf("sendto error\n");
   }
