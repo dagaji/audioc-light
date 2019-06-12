@@ -416,6 +416,8 @@ int crear_socket(struct in_addr multicastIp, struct sockaddr_in * remToSendSAddr
   unsigned char loop=0;
   
   setsockopt(descriptor_socket, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(unsigned char));
+
+  printf(">>>>>>>>>>>>>>>>>>%d\n", sizeof(*remToSendSAddr));
   
   return descriptor_socket;
   
